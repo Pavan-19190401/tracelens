@@ -383,6 +383,8 @@ export default function LoginPage() {
                   <p className="text-[11px] text-zinc-500 mt-1.5">
                     We will send a 6-digit real-time verification code to {fullPhoneNumber || "your phone"}.
                   </p>
+                  {/* Hidden / Invisible reCAPTCHA container for Firebase Phone Auth */}
+                  <div id="recaptcha-container" />
                 </div>
 
                 <div className="pt-2">
