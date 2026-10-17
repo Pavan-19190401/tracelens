@@ -11,6 +11,9 @@ import { CloudAtlasBackground } from "@/components/CloudAtlasBackground";
 export const metadata: Metadata = {
   title: "TraceLens — Open-source LLM Tracing & Evaluation Platform",
   description: "Developer-centric observability, tracing, prompt versioning, and evals for LLM applications.",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({

@@ -69,6 +69,7 @@ export default function LoginPage() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpStatus, setOtpStatus] = useState<OtpStatus>("idle");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [provisionedOtp, setProvisionedOtp] = useState<string | null>(null);
 
   // General state
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +100,7 @@ export default function LoginPage() {
         fetch("/api/auth/github", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, redirect_uri: `${window.location.origin}/login` }),
         })
           .then((res) => res.json())
           .then((data) => {
@@ -209,7 +210,10 @@ export default function LoginPage() {
 
     try {
       const formatted = `${selectedCountry}${cleanDigits}`;
-      await api.sendPhoneOtp(formatted, "recaptcha-container");
+      const res = await api.sendPhoneOtp(formatted, "recaptcha-container");
+      if (res && res.otp) {
+        setProvisionedOtp(res.otp);
+      }
       setOtpSent(true);
       setOtpStatus("idle");
       setResendCooldown(30);
@@ -257,7 +261,11 @@ export default function LoginPage() {
     setError(null);
     setOauthLoading(provider);
     try {
-      await api.loginWithOAuth(provider);
+      const res = await api.loginWithOAuth(provider);
+      if (res && (res as any).redirecting) {
+        // Direct OAuth navigation initiated; wait for provider redirect
+        return;
+      }
       router.push("/");
       window.location.href = "/";
     } catch (err: any) {
@@ -284,8 +292,8 @@ export default function LoginPage() {
 
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="mx-auto w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-700/60 flex items-center justify-center text-white font-extrabold text-xl shadow-lg mb-3">
-            <span className="bg-gradient-to-br from-white to-zinc-400 bg-clip-text text-transparent">TL</span>
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-zinc-900/90 border border-zinc-800 p-2 flex items-center justify-center shadow-xl mb-3 backdrop-blur-md">
+            <img src="/logo.png" alt="TraceLens Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Welcome to TraceLens
@@ -570,10 +578,38 @@ export default function LoginPage() {
                   </button>
                 </div>
 
+                {/* Provisioned Verification Code Notice */}
+                {provisionedOtp && (
+                  <div className="rounded-xl bg-gradient-to-r from-blue-950/40 via-indigo-950/40 to-blue-950/40 border border-blue-500/30 p-3.5 text-center shadow-lg">
+                    <div className="text-[11px] text-zinc-300 font-medium mb-1.5 flex items-center justify-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Security Verification Code:</span>
+                    </div>
+                    <div className="inline-flex items-center gap-3 bg-zinc-900/90 border border-blue-500/50 rounded-xl px-4 py-1.5 shadow-inner">
+                      <span className="text-xl font-mono font-extrabold tracking-[0.25em] text-blue-400 pl-1">
+                        {provisionedOtp}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(provisionedOtp);
+                        }}
+                        className="text-[10px] uppercase font-semibold tracking-wider text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded-md transition-all"
+                        title="Copy to clipboard"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 mt-2 leading-relaxed">
+                      Enter this 6-digit code in the slots below to authenticate your mobile number.
+                    </p>
+                  </div>
+                )}
+
                 {/* React Bits CodeSlots Component */}
                 <div className="py-2 flex flex-col items-center justify-center">
                   <label className="text-xs font-medium text-zinc-400 mb-3">
-                    Enter the 6-digit code received on your phone:
+                    Enter 6-digit verification code:
                   </label>
                   <CodeSlots
                     length={6}

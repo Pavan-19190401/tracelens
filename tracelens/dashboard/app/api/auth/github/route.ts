@@ -2,13 +2,22 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { code } = await req.json();
+    const { code, redirect_uri } = await req.json();
     if (!code) {
       return NextResponse.json({ error: "Missing authorization code" }, { status: 400 });
     }
 
     const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || "Ov23li6PaJtcPOZK3dk2";
     const clientSecret = process.env.GITHUB_CLIENT_SECRET || "cd3142000b576279d38bef06ba8c5026fd04c4d7";
+
+    const payload: Record<string, string> = {
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+    };
+    if (redirect_uri) {
+      payload.redirect_uri = redirect_uri;
+    }
 
     // 1. Exchange code for GitHub access token
     const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
@@ -17,17 +26,14 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
+      console.error("GitHub access_token exchange failed:", tokenData);
       return NextResponse.json(
-        { error: tokenData.error_description || "Failed to exchange GitHub authorization code" },
+        { error: tokenData.error_description || tokenData.error || "Failed to exchange GitHub authorization code" },
         { status: 400 }
       );
     }
@@ -70,6 +76,7 @@ export async function POST(req: Request) {
       avatar_url: userData.avatar_url,
     });
   } catch (err: any) {
+    console.error("GitHub auth error:", err);
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
   }
 }
