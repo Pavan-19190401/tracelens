@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { api, setToken } from "@/lib/api";
 import { getFirebaseConfig, saveFirebaseConfig, isFirebaseConfigured } from "@/lib/firebase";
 import CodeSlots from "@/components/react-bits/CodeSlots";
 
@@ -69,7 +69,6 @@ export default function LoginPage() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpStatus, setOtpStatus] = useState<OtpStatus>("idle");
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [provisionedOtp, setProvisionedOtp] = useState<string | null>(null);
 
   // General state
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +95,8 @@ export default function LoginPage() {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get("code");
       if (code) {
+        // Clean URL immediately so one-time code is not re-used
+        window.history.replaceState({}, document.title, window.location.pathname);
         setOauthLoading("github");
         fetch("/api/auth/github", {
           method: "POST",
@@ -107,6 +108,7 @@ export default function LoginPage() {
             if (data.error) {
               setError(data.error);
             } else {
+              setToken(data.access_token);
               if (data.email) localStorage.setItem("tracelens_user_email", data.email);
               if (data.name) localStorage.setItem("tracelens_user_name", data.name);
               localStorage.setItem("tracelens_token", data.access_token);
@@ -210,10 +212,7 @@ export default function LoginPage() {
 
     try {
       const formatted = `${selectedCountry}${cleanDigits}`;
-      const res = await api.sendPhoneOtp(formatted, "recaptcha-container");
-      if (res && res.otp) {
-        setProvisionedOtp(res.otp);
-      }
+      await api.sendPhoneOtp(formatted, "recaptcha-container");
       setOtpSent(true);
       setOtpStatus("idle");
       setResendCooldown(30);
@@ -578,38 +577,10 @@ export default function LoginPage() {
                   </button>
                 </div>
 
-                {/* Provisioned Verification Code Notice */}
-                {provisionedOtp && (
-                  <div className="rounded-xl bg-gradient-to-r from-blue-950/40 via-indigo-950/40 to-blue-950/40 border border-blue-500/30 p-3.5 text-center shadow-lg">
-                    <div className="text-[11px] text-zinc-300 font-medium mb-1.5 flex items-center justify-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>Security Verification Code:</span>
-                    </div>
-                    <div className="inline-flex items-center gap-3 bg-zinc-900/90 border border-blue-500/50 rounded-xl px-4 py-1.5 shadow-inner">
-                      <span className="text-xl font-mono font-extrabold tracking-[0.25em] text-blue-400 pl-1">
-                        {provisionedOtp}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard?.writeText(provisionedOtp);
-                        }}
-                        className="text-[10px] uppercase font-semibold tracking-wider text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded-md transition-all"
-                        title="Copy to clipboard"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-zinc-400 mt-2 leading-relaxed">
-                      Enter this 6-digit code in the slots below to authenticate your mobile number.
-                    </p>
-                  </div>
-                )}
-
                 {/* React Bits CodeSlots Component */}
                 <div className="py-2 flex flex-col items-center justify-center">
                   <label className="text-xs font-medium text-zinc-400 mb-3">
-                    Enter 6-digit verification code:
+                    Enter the 6-digit verification code sent to your phone:
                   </label>
                   <CodeSlots
                     length={6}

@@ -54,9 +54,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   try {
     const res = await fetch(url, { ...options, headers });
 
-    if (res.status === 401 && typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
-      removeToken();
-      window.location.href = "/login";
+    if (res.status === 401 && typeof window !== "undefined") {
+      console.warn("Backend 401 response for:", path);
     }
 
     if (!res.ok) {
@@ -152,96 +151,51 @@ export const api = {
     return data;
   },
 
-  // Phone OTP Authentication
+  // Phone OTP Authentication (Genuine Firebase Carrier SMS)
   async sendPhoneOtp(phone: string, containerId: string = "recaptcha-container") {
     const cleanPhone = phone.startsWith("+") ? phone : `+${phone.replace(/[^\d]/g, "")}`;
-    let generatedOtp = "748291";
 
-    // 1. Sync phone with backend to register test number in Firebase Identity Platform
+    if (!isFirebaseConfigured() || typeof window === "undefined") {
+      throw new Error("REAL_AUTH_REQUIRED: Firebase authentication credentials are required to dispatch SMS.");
+    }
+
     try {
-      const res = await fetch("/api/auth/phone", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: cleanPhone }),
-      });
-      const data = await res.json();
-      if (data.otp) {
-        generatedOtp = data.otp;
+      const confirmationResult = await sendFirebasePhoneOtp(cleanPhone, containerId);
+      (window as any).__tracelens_confirmation_result = confirmationResult;
+      return {
+        success: true,
+        message: `Real verification code dispatched via SMS to ${cleanPhone}`,
+      };
+    } catch (err: any) {
+      if (err.code === "auth/billing-not-enabled" || (err.message && err.message.includes("billing-not-enabled"))) {
+        throw new Error(
+          "Carrier SMS delivery to mobile phones requires Cloud Billing enabled on Firebase project llm1-772fa (Blaze plan is $0 for 10,000 verifications/mo). Please enable billing in Firebase Console, or sign in via Google or GitHub."
+        );
       }
-    } catch {
-      // ignore
+      throw err;
     }
-
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem(`tracelens_otp_${cleanPhone}`, generatedOtp);
-    }
-
-    // 2. Try Firebase Phone Auth
-    if (isFirebaseConfigured() && typeof window !== "undefined") {
-      try {
-        const confirmationResult = await sendFirebasePhoneOtp(cleanPhone, containerId);
-        (window as any).__tracelens_confirmation_result = confirmationResult;
-        return {
-          success: true,
-          message: `Verification code generated for ${cleanPhone}`,
-          otp: generatedOtp,
-          isFirebase: true,
-        };
-      } catch (err: any) {
-        console.warn("Firebase Phone Auth note:", err.message);
-      }
-    }
-
-    return {
-      success: true,
-      message: `Verification code dispatched to ${cleanPhone}`,
-      otp: generatedOtp,
-      isFirebase: false,
-    };
   },
 
   async verifyPhoneOtp(phone: string, otp: string) {
     const cleanPhone = phone.startsWith("+") ? phone : `+${phone.replace(/[^\d]/g, "")}`;
 
-    // 1. Verify with Google Firebase if confirmationResult exists
+    // Verify with Google Firebase
     if (typeof window !== "undefined" && (window as any).__tracelens_confirmation_result) {
-      try {
-        const userCredential = await (window as any).__tracelens_confirmation_result.confirm(otp);
-        const user = userCredential.user;
-        const token = await user.getIdToken();
-        const email = user.email || `${cleanPhone.replace("+", "")}@mobile.tracelens.dev`;
-        setToken(token);
-        localStorage.setItem("tracelens_user_email", user.phoneNumber || cleanPhone);
-        localStorage.setItem("tracelens_user_name", user.displayName || `Verified Mobile User (${cleanPhone})`);
-        return {
-          access_token: token,
-          user_id: user.uid,
-          email,
-        };
-      } catch (err: any) {
-        // Fall through to test code check
-      }
+      const userCredential = await (window as any).__tracelens_confirmation_result.confirm(otp);
+      const user = userCredential.user;
+      const token = await user.getIdToken();
+      const email = user.email || `${cleanPhone.replace("+", "")}@mobile.tracelens.dev`;
+      setToken(token);
+      localStorage.setItem("tracelens_user_email", user.phoneNumber || cleanPhone);
+      localStorage.setItem("tracelens_user_name", user.displayName || `Verified Mobile User (${cleanPhone})`);
+      return {
+        access_token: token,
+        user_id: user.uid,
+        email,
+      };
     }
 
-    // 2. Test phone numbers & dynamic session code check
-    const stored = typeof window !== "undefined" ? sessionStorage.getItem(`tracelens_otp_${cleanPhone}`) : null;
-    const isValid = otp === stored || (stored && otp.trim() === stored.trim()) || otp === "748291" || otp === "123456";
-    if (!isValid) {
-      throw new Error("Invalid verification code. Please enter the 6-digit code shown.");
-    }
-
-    const email = `${cleanPhone.replace("+", "")}@mobile.tracelens.dev`;
-    if (typeof window !== "undefined") {
-      localStorage.setItem("tracelens_user_email", cleanPhone);
-      localStorage.setItem("tracelens_user_name", `Mobile User (${cleanPhone})`);
-    }
-    const token = `tl_phone_jwt_${Date.now()}`;
-    setToken(token);
-    return {
-      access_token: token,
-      user_id: `u_phone_${cleanPhone.replace("+", "")}`,
-      email,
-    };
+    throw new Error("Verification session not found. Please click 'Resend Code' and re-enter the code received on your phone.");
   },
 
   // Social OAuth Login (Google, GitHub)
