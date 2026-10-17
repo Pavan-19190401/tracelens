@@ -219,6 +219,8 @@ class EvalRunResponse(BaseModel):
     started_at: datetime
     completed_at: datetime | None = None
 
+    model_config = {"from_attributes": True}
+
 
 class EvalCompareItem(BaseModel):
     dataset_item_id: str

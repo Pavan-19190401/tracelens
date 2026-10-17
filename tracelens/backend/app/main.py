@@ -10,6 +10,7 @@ from sqlalchemy import text
 from tracelens.backend.app.api.v1.alerts import router as alerts_router
 from tracelens.backend.app.api.v1.auth import router as auth_router
 from tracelens.backend.app.api.v1.datasets import router as datasets_router
+from tracelens.backend.app.api.v1.evals import router as evals_router
 from tracelens.backend.app.api.v1.ingest import router as ingest_router
 from tracelens.backend.app.api.v1.metrics import router as metrics_router
 from tracelens.backend.app.api.v1.projects import router as projects_router
@@ -95,4 +96,5 @@ app.include_router(traces_router, prefix=settings.API_V1_STR)
 app.include_router(metrics_router, prefix=settings.API_V1_STR)
 app.include_router(prompts_router, prefix=settings.API_V1_STR)
 app.include_router(datasets_router, prefix=settings.API_V1_STR)
+app.include_router(evals_router, prefix=settings.API_V1_STR)
 app.include_router(alerts_router, prefix=settings.API_V1_STR)
