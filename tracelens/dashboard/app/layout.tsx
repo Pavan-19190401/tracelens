@@ -5,6 +5,7 @@ import { QueryProvider } from "@/lib/query-provider";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
+import { CrosshairOverlay } from "@/components/CrosshairOverlay";
 
 export const metadata: Metadata = {
   title: "TraceLens — Open-source LLM Tracing & Evaluation Platform",
@@ -21,6 +22,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background antialiased flex flex-col">
         <QueryProvider>
           <ThemeProvider>
+            <CrosshairOverlay />
             <Navbar />
             <div className="flex-1 flex">
               <Sidebar />
