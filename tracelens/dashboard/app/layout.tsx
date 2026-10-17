@@ -5,7 +5,7 @@ import { QueryProvider } from "@/lib/query-provider";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { CrosshairOverlay } from "@/components/CrosshairOverlay";
+import { TargetCursorOverlay } from "@/components/TargetCursorOverlay";
 import { CloudAtlasBackground } from "@/components/CloudAtlasBackground";
 
 export const metadata: Metadata = {
@@ -24,7 +24,7 @@ export default function RootLayout({
         <QueryProvider>
           <ThemeProvider>
             <CloudAtlasBackground />
-            <CrosshairOverlay />
+            <TargetCursorOverlay />
             <div className="relative z-10 flex flex-col min-h-screen">
               <Navbar />
               <div className="flex-1 flex">
