@@ -204,7 +204,11 @@ export default function LoginPage() {
       router.push("/");
       window.location.href = "/";
     } catch (err: any) {
-      if (err.message && err.message.includes("REAL_AUTH_REQUIRED")) {
+      if (err.code === "auth/operation-not-allowed" || (err.message && err.message.includes("operation-not-allowed"))) {
+        setError(`The ${provider === "github" ? "GitHub" : "Google"} provider requires a registered Client ID & Secret in Firebase.`);
+      } else if (err.code === "auth/popup-closed-by-user") {
+        setError("The sign-in popup was closed before completing authentication.");
+      } else if (err.message && err.message.includes("REAL_AUTH_REQUIRED")) {
         setShowConfigModal(true);
         setError(`To authenticate with your real ${provider.toUpperCase()} account, connect your Firebase project credentials below.`);
       } else {
