@@ -28,7 +28,7 @@ export function KPICard({
   }[badgeColor];
 
   return (
-    <div className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-card/75 dark:bg-card/50 backdrop-blur-md border border-border/80 rounded-xl p-5 shadow-sm hover:shadow-lg hover:border-blue-500/40 transition-all">
       <div className="flex items-center justify-between mb-3">
         <span className="text-sm font-medium text-muted-foreground">{title}</span>
         <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">

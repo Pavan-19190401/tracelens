@@ -131,13 +131,13 @@ export default function OverviewPage() {
       {/* Timeseries Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Trace Volume & Errors */}
-        <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+        <div className="bg-card/75 dark:bg-card/50 backdrop-blur-md border border-border/80 rounded-xl p-5 shadow-sm hover:shadow-lg transition-all">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-semibold text-sm">Trace Volume & Errors</h3>
               <p className="text-xs text-muted-foreground mt-0.5">Execution count per hourly interval</p>
             </div>
-            <span className="text-xs px-2 py-0.5 rounded bg-muted font-mono">Last 7 Days</span>
+            <span className="text-xs px-2 py-0.5 rounded bg-muted/80 backdrop-blur-sm font-mono">Last 7 Days</span>
           </div>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -157,7 +157,7 @@ export default function OverviewPage() {
         </div>
 
         {/* Latency Timeseries */}
-        <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+        <div className="bg-card/75 dark:bg-card/50 backdrop-blur-md border border-border/80 rounded-xl p-5 shadow-sm hover:shadow-lg transition-all">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-semibold text-sm">Average Latency (ms)</h3>
