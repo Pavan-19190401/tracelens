@@ -10,47 +10,86 @@ import {
   ConfirmationResult,
 } from "firebase/auth";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
+export interface FirebaseCredentials {
+  apiKey?: string;
+  authDomain?: string;
+  projectId?: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId?: string;
+}
 
-export const isFirebaseConfigured = Boolean(
-  firebaseConfig.apiKey &&
-  firebaseConfig.authDomain &&
-  firebaseConfig.projectId
-);
+export function getFirebaseConfig(): FirebaseCredentials {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("tracelens_firebase_config");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.apiKey && parsed.authDomain && parsed.projectId) {
+          return parsed;
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  return {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  };
+}
+
+export function isFirebaseConfigured(): boolean {
+  const cfg = getFirebaseConfig();
+  return Boolean(cfg.apiKey && cfg.authDomain && cfg.projectId);
+}
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 
-if (typeof window !== "undefined" && isFirebaseConfigured) {
+export function getFirebaseAuth(): Auth | null {
+  if (auth) return auth;
+  const cfg = getFirebaseConfig();
+  if (!cfg.apiKey || !cfg.authDomain || !cfg.projectId) {
+    return null;
+  }
   try {
-    app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    app = getApps().length > 0 ? getApp() : initializeApp(cfg);
     auth = getAuth(app);
+    return auth;
   } catch (e) {
     console.warn("Failed to initialize Firebase App:", e);
+    return null;
   }
 }
 
-export { app, auth };
+export function saveFirebaseConfig(config: FirebaseCredentials): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("tracelens_firebase_config", JSON.stringify(config));
+    auth = null;
+    app = null;
+    getFirebaseAuth();
+  }
+}
 
 /**
  * Trigger Real Google Sign-in Popup
  */
 export async function signInWithGoogle() {
-  if (!auth) {
+  const currentAuth = getFirebaseAuth();
+  if (!currentAuth) {
     throw new Error(
-      "Firebase is not configured. Please add NEXT_PUBLIC_FIREBASE_API_KEY, AUTH_DOMAIN, and PROJECT_ID to your environment."
+      "REAL_AUTH_REQUIRED: Firebase credentials are required for genuine Google account login."
     );
   }
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
-  const result = await signInWithPopup(auth, provider);
+  const result = await signInWithPopup(currentAuth, provider);
   return result.user;
 }
 
@@ -58,13 +97,14 @@ export async function signInWithGoogle() {
  * Trigger Real GitHub Sign-in Popup
  */
 export async function signInWithGithub() {
-  if (!auth) {
+  const currentAuth = getFirebaseAuth();
+  if (!currentAuth) {
     throw new Error(
-      "Firebase is not configured. Please add NEXT_PUBLIC_FIREBASE_API_KEY, AUTH_DOMAIN, and PROJECT_ID to your environment."
+      "REAL_AUTH_REQUIRED: Firebase credentials are required for genuine GitHub account login."
     );
   }
   const provider = new GithubAuthProvider();
-  const result = await signInWithPopup(auth, provider);
+  const result = await signInWithPopup(currentAuth, provider);
   return result.user;
 }
 
@@ -75,9 +115,10 @@ export async function sendFirebasePhoneOtp(
   phoneNumber: string,
   containerId: string = "recaptcha-container"
 ): Promise<ConfirmationResult> {
-  if (!auth) {
+  const currentAuth = getFirebaseAuth();
+  if (!currentAuth) {
     throw new Error(
-      "Firebase is not configured. Please set up your Firebase project credentials."
+      "REAL_AUTH_REQUIRED: Firebase credentials are required for live carrier SMS OTP delivery."
     );
   }
 
@@ -90,7 +131,7 @@ export async function sendFirebasePhoneOtp(
     }
   }
 
-  const verifier = new RecaptchaVerifier(auth, containerId, {
+  const verifier = new RecaptchaVerifier(currentAuth, containerId, {
     size: "invisible",
     callback: () => {
       // reCAPTCHA solved
@@ -104,5 +145,5 @@ export async function sendFirebasePhoneOtp(
     (window as any).recaptchaVerifier = verifier;
   }
 
-  return signInWithPhoneNumber(auth, phoneNumber, verifier);
+  return signInWithPhoneNumber(currentAuth, phoneNumber, verifier);
 }

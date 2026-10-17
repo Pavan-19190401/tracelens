@@ -157,50 +157,19 @@ export const api = {
     const cleanPhone = phone.startsWith("+") ? phone : `+${phone.replace(/[^\d]/g, "")}`;
 
     // 1. If Firebase is configured, dispatch real SMS through Firebase Phone Auth
-    if (isFirebaseConfigured && typeof window !== "undefined") {
-      try {
-        const confirmationResult = await sendFirebasePhoneOtp(cleanPhone, containerId);
-        (window as any).__tracelens_confirmation_result = confirmationResult;
-        return {
-          success: true,
-          message: `Real SMS verification code dispatched to ${cleanPhone}`,
-          isFirebase: true,
-        };
-      } catch (err: any) {
-        console.warn("Firebase Phone Auth error, falling back:", err);
-        throw new Error(err.message || "Failed to dispatch SMS verification code.");
-      }
+    if (isFirebaseConfigured() && typeof window !== "undefined") {
+      const confirmationResult = await sendFirebasePhoneOtp(cleanPhone, containerId);
+      (window as any).__tracelens_confirmation_result = confirmationResult;
+      return {
+        success: true,
+        message: `Real SMS verification code dispatched to ${cleanPhone}`,
+        isFirebase: true,
+      };
     }
 
-    // 2. Real-time cryptographic OTP fallback
-    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem(`tracelens_otp_${cleanPhone}`, generatedOtp);
-    }
-
-    // Attempt real SMS gateway dispatch via Textbelt
-    try {
-      if (typeof window !== "undefined" && window.location.protocol.startsWith("http")) {
-        fetch("https://textbelt.com/text", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            phone: cleanPhone,
-            message: `Your TraceLens verification code is: ${generatedOtp}`,
-            key: "textbelt",
-          }),
-        }).catch(() => {});
-      }
-    } catch {
-      // Continue seamlessly
-    }
-
-    return {
-      success: true,
-      message: `Verification code dispatched to ${phone}`,
-      otp: generatedOtp,
-      isFirebase: false,
-    };
+    throw new Error(
+      "REAL_AUTH_REQUIRED: Firebase credentials are required for live carrier SMS OTP delivery."
+    );
   },
 
   async verifyPhoneOtp(phone: string, otp: string) {
@@ -226,47 +195,23 @@ export const api = {
       }
     }
 
-    // 2. Fallback validation
-    const stored = typeof window !== "undefined" ? sessionStorage.getItem(`tracelens_otp_${cleanPhone}`) : null;
-    const isValid = otp === stored || (stored && otp.trim() === stored.trim()) || otp === "748291" || otp === "123456";
-    if (!isValid) {
-      throw new Error("Invalid verification code. Please check your SMS and try again.");
-    }
-    const email = `${cleanPhone.replace("+", "")}@mobile.tracelens.dev`;
-    if (typeof window !== "undefined") {
-      localStorage.setItem("tracelens_user_email", cleanPhone);
-      localStorage.setItem("tracelens_user_name", `Mobile User (${cleanPhone})`);
-    }
-    const token = `tl_phone_jwt_${Date.now()}`;
-    setToken(token);
-    return {
-      access_token: token,
-      user_id: `u_phone_${cleanPhone.replace("+", "")}`,
-      email,
-    };
+    throw new Error("No active verification session found. Please request a new SMS code.");
   },
 
   // Social OAuth Login (Google, GitHub)
   async loginWithOAuth(provider: "google" | "github" | "apple") {
     // 1. If Firebase is configured, trigger Google / GitHub Popup
-    if (isFirebaseConfigured && (provider === "google" || provider === "github")) {
-      try {
-        const user = provider === "google" ? await signInWithGoogle() : await signInWithGithub();
-        const token = await user.getIdToken();
-        setToken(token);
-        if (user.email) localStorage.setItem("tracelens_user_email", user.email);
-        if (user.displayName) localStorage.setItem("tracelens_user_name", user.displayName);
-        return {
-          access_token: token,
-          user_id: user.uid,
-          email: user.email || `${provider}@tracelens.dev`,
-        };
-      } catch (err: any) {
-        if (err.code === "auth/popup-closed-by-user") {
-          throw new Error("Sign-in popup was closed before completing.");
-        }
-        throw new Error(err.message || `Failed to sign in with ${provider}.`);
-      }
+    if (isFirebaseConfigured() && (provider === "google" || provider === "github")) {
+      const user = provider === "google" ? await signInWithGoogle() : await signInWithGithub();
+      const token = await user.getIdToken();
+      setToken(token);
+      if (user.email) localStorage.setItem("tracelens_user_email", user.email);
+      if (user.displayName) localStorage.setItem("tracelens_user_name", user.displayName);
+      return {
+        access_token: token,
+        user_id: user.uid,
+        email: user.email || `${provider}@tracelens.dev`,
+      };
     }
 
     // 2. Direct OAuth Client ID Redirect if configured
@@ -284,24 +229,9 @@ export const api = {
       return;
     }
 
-    // 3. Seamless sign-in with verified profile persistence
-    const mockEmails = {
-      google: "user@gmail.com",
-      github: "developer@github.com",
-      apple: "developer@icloud.com",
-    };
-    const email = mockEmails[provider] || "developer@example.com";
-    if (typeof window !== "undefined") {
-      localStorage.setItem("tracelens_user_email", email);
-      localStorage.setItem("tracelens_user_name", `${provider.charAt(0).toUpperCase() + provider.slice(1)} Verified User`);
-    }
-    const token = `tl_oauth_${provider}_${Date.now()}`;
-    setToken(token);
-    return {
-      access_token: token,
-      user_id: `u_oauth_${provider}`,
-      email,
-    };
+    throw new Error(
+      `REAL_AUTH_REQUIRED: Please configure your Firebase credentials to enable real ${provider.toUpperCase()} account sign-in.`
+    );
   },
 
   async getMe() {

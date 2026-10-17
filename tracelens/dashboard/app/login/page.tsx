@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { getFirebaseConfig, saveFirebaseConfig, isFirebaseConfigured } from "@/lib/firebase";
 import CodeSlots from "@/components/react-bits/CodeSlots";
 
 type AuthTab = "email" | "phone";
@@ -72,8 +73,54 @@ export default function LoginPage() {
   // General state
   const [error, setError] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+  const [configSuccess, setConfigSuccess] = useState<string | null>(null);
+
+  // Real Auth Setup Modal state
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [authDomain, setAuthDomain] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [appId, setAppId] = useState("");
+  const [rawSnippet, setRawSnippet] = useState("");
+
+  useEffect(() => {
+    const cfg = getFirebaseConfig();
+    if (cfg.apiKey) setApiKey(cfg.apiKey);
+    if (cfg.authDomain) setAuthDomain(cfg.authDomain);
+    if (cfg.projectId) setProjectId(cfg.projectId);
+    if (cfg.appId) setAppId(cfg.appId);
+  }, []);
 
   const fullPhoneNumber = `${selectedCountry} ${phoneNumber.trim()}`;
+
+  // Parse Firebase SDK config snippet
+  const handleParseSnippet = (text: string) => {
+    setRawSnippet(text);
+    try {
+      const apiMatch = text.match(/apiKey:\s*["']([^"']+)["']/);
+      const domainMatch = text.match(/authDomain:\s*["']([^"']+)["']/);
+      const projectMatch = text.match(/projectId:\s*["']([^"']+)["']/);
+      const appMatch = text.match(/appId:\s*["']([^"']+)["']/);
+      if (apiMatch) setApiKey(apiMatch[1]);
+      if (domainMatch) setAuthDomain(domainMatch[1]);
+      if (projectMatch) setProjectId(projectMatch[1]);
+      if (appMatch) setAppId(appMatch[1]);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleSaveConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apiKey || !authDomain || !projectId) {
+      setError("Please provide at least apiKey, authDomain, and projectId.");
+      return;
+    }
+    saveFirebaseConfig({ apiKey, authDomain, projectId, appId });
+    setConfigSuccess("Real Authentication Credentials activated! You can now log in with your genuine Google account or send live SMS OTPs.");
+    setShowConfigModal(false);
+    setError(null);
+  };
 
   // Email login submit
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -105,7 +152,7 @@ export default function LoginPage() {
 
     try {
       const formatted = `${selectedCountry}${cleanDigits}`;
-      await api.sendPhoneOtp(formatted);
+      await api.sendPhoneOtp(formatted, "recaptcha-container");
       setOtpSent(true);
       setOtpStatus("idle");
       setResendCooldown(30);
@@ -119,7 +166,12 @@ export default function LoginPage() {
         });
       }, 1000);
     } catch (err: any) {
-      setError(err.message || "Failed to send verification code. Please check the number and try again.");
+      if (err.message && err.message.includes("REAL_AUTH_REQUIRED")) {
+        setShowConfigModal(true);
+        setError("To deliver real SMS OTPs to mobile phones, please connect your Firebase credentials below.");
+      } else {
+        setError(err.message || "Failed to send verification code. Please check the number and try again.");
+      }
     } finally {
       setOtpLoading(false);
     }
@@ -143,7 +195,7 @@ export default function LoginPage() {
     }
   };
 
-  // OAuth login
+  // Real OAuth login (Google & GitHub)
   const handleOAuthLogin = async (provider: "google" | "github") => {
     setError(null);
     setOauthLoading(provider);
@@ -152,7 +204,12 @@ export default function LoginPage() {
       router.push("/");
       window.location.href = "/";
     } catch (err: any) {
-      setError(err.message || `Failed to sign in with ${provider}.`);
+      if (err.message && err.message.includes("REAL_AUTH_REQUIRED")) {
+        setShowConfigModal(true);
+        setError(`To authenticate with your real ${provider.toUpperCase()} account, connect your Firebase project credentials below.`);
+      } else {
+        setError(err.message || `Failed to sign in with ${provider}.`);
+      }
     } finally {
       setOauthLoading(null);
     }
@@ -176,6 +233,20 @@ export default function LoginPage() {
             Enterprise LLM Observability & Evaluation Platform
           </p>
         </div>
+
+        {/* Success toast if credentials saved */}
+        {configSuccess && (
+          <div className="mb-5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-3 text-xs text-emerald-400 flex items-start justify-between gap-2">
+            <span>{configSuccess}</span>
+            <button
+              type="button"
+              onClick={() => setConfigSuccess(null)}
+              className="text-emerald-400 font-bold hover:text-emerald-300"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Social Authentication */}
         <div className="grid grid-cols-2 gap-3 mb-6">
@@ -237,7 +308,7 @@ export default function LoginPage() {
           </span>
         </div>
 
-        {/* Tab Switcher: Email vs Mobile Number (no "(OTP)" in braces) */}
+        {/* Tab Switcher: Email vs Mobile Number */}
         <div className="flex rounded-xl bg-zinc-900/90 p-1 border border-zinc-800 mb-6">
           <button
             type="button"
@@ -271,13 +342,25 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Error Feedback */}
+        {/* Error Feedback with quick setup link */}
         {error && (
-          <div className="mb-5 rounded-xl bg-rose-500/10 border border-rose-500/25 p-3 text-xs text-rose-400 flex items-start gap-2">
-            <svg className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            <span>{error}</span>
+          <div className="mb-5 rounded-xl bg-rose-500/10 border border-rose-500/25 p-3 text-xs text-rose-400 flex flex-col gap-1.5">
+            <div className="flex items-start gap-2">
+              <svg className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <span>{error}</span>
+            </div>
+            {!isFirebaseConfigured() && (
+              <button
+                type="button"
+                onClick={() => setShowConfigModal(true)}
+                className="cursor-target text-[11px] font-semibold text-blue-400 hover:text-blue-300 underline self-start ml-6"
+                data-cursor-label="Setup Auth"
+              >
+                Click here to connect Firebase credentials →
+              </button>
+            )}
           </div>
         )}
 
@@ -476,14 +559,147 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Footer Link */}
-        <div className="mt-8 text-center text-xs text-zinc-500 border-t border-zinc-800/60 pt-4">
-          Don&apos;t have an account?{" "}
+        {/* Footer Link & Setup Trigger */}
+        <div className="mt-8 flex items-center justify-between text-xs text-zinc-500 border-t border-zinc-800/60 pt-4">
           <Link href="/register" className="cursor-target font-semibold text-blue-400 hover:text-blue-300" data-cursor-label="Sign Up">
             Create an account
           </Link>
+          <button
+            type="button"
+            onClick={() => setShowConfigModal(true)}
+            className="cursor-target text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1"
+            data-cursor-label="Auth Settings"
+          >
+            <span>⚙️</span>
+            <span>Real Auth Keys</span>
+          </button>
         </div>
       </div>
+
+      {/* REAL AUTH CONFIGURATION MODAL */}
+      {showConfigModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🔥</span>
+                <h2 className="text-lg font-bold text-white">Connect Firebase Project</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConfigModal(false)}
+                className="text-zinc-400 hover:text-white p-1 rounded-lg text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+              To send <strong>real-time SMS OTPs</strong> to mobile phones and trigger <strong>genuine Google/GitHub popups</strong> without mock logins, link your free Firebase project credentials below.
+            </p>
+
+            <form onSubmit={handleSaveConfig} className="space-y-4">
+              {/* Quick Paste Snippet */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 mb-1">
+                  Option 1: Paste Firebase SDK snippet (Auto-detects keys)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder={`const firebaseConfig = {\n  apiKey: "AIzaSy...",\n  authDomain: "project.firebaseapp.com",\n  projectId: "project-id"\n};`}
+                  value={rawSnippet}
+                  onChange={(e) => handleParseSnippet(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900/70 p-2.5 text-xs font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="relative flex items-center justify-center">
+                <div className="border-t border-zinc-800 w-full" />
+                <span className="bg-zinc-950 px-2 text-[10px] uppercase text-zinc-500 font-bold absolute">
+                  or enter fields manually
+                </span>
+              </div>
+
+              {/* Individual Fields */}
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                    API Key (apiKey)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="AIzaSy..."
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                    Auth Domain (authDomain)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="your-project.firebaseapp.com"
+                    value={authDomain}
+                    onChange={(e) => setAuthDomain(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                    Project ID (projectId)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="your-project-id"
+                    value={projectId}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                    App ID (appId - Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="1:123456789:web:abcdef"
+                    value={appId}
+                    onChange={(e) => setAppId(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between">
+                <a
+                  href="https://console.firebase.google.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] text-blue-400 hover:text-blue-300 underline"
+                >
+                  Open Firebase Console (Free) ↗
+                </a>
+
+                <button
+                  type="submit"
+                  className="cursor-target px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white shadow-md transition-all"
+                  data-cursor-label="Save Keys"
+                >
+                  Save & Activate Real Auth
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
