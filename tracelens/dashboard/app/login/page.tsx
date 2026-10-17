@@ -29,22 +29,40 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 shadow-lg">
-        <div className="text-center mb-8">
+    <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center py-6">
+      <div className="w-full max-w-md rounded-2xl border border-border/80 bg-card/85 backdrop-blur-md p-8 shadow-2xl">
+        <div className="text-center mb-6">
           <div className="mx-auto w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white font-extrabold text-xl shadow-md mb-3">
             TL
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Sign in to TraceLens
           </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Access your traces, evals, and observability dashboards.
           </p>
         </div>
 
+        {/* Demo Account Helper */}
+        <div className="mb-6 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs flex items-center justify-between">
+          <div>
+            <span className="font-semibold text-blue-400">Demo Account:</span>
+            <p className="text-muted-foreground font-mono mt-0.5">demo@tracelens.dev / password123</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail("demo@tracelens.dev");
+              setPassword("password123");
+            }}
+            className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium text-[11px] transition-colors"
+          >
+            Auto-fill
+          </button>
+        </div>
+
         {error && (
-          <div className="mb-6 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 p-3 text-xs text-rose-700 dark:text-rose-300">
+          <div className="mb-6 rounded-lg bg-rose-500/10 border border-rose-500/20 p-3 text-xs text-rose-400">
             {error}
           </div>
         )}

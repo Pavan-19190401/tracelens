@@ -85,7 +85,7 @@ export function Navbar() {
           {theme === "dark" ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
         </button>
 
-        {userEmail && (
+        {userEmail ? (
           <div className="flex items-center space-x-3 pl-3 border-l border-border">
             <span className="text-xs text-muted-foreground font-mono">{userEmail}</span>
             <button
@@ -96,7 +96,22 @@ export function Navbar() {
               <LogOut className="w-4 h-4" />
             </button>
           </div>
-        )}
+        ) : !isAuthPage ? (
+          <div className="flex items-center space-x-2 pl-3 border-l border-border/80">
+            <Link
+              href="/login"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-zinc-800/60 transition-colors"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/register"
+              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-colors"
+            >
+              Register
+            </Link>
+          </div>
+        ) : null}
       </div>
     </header>
   );
