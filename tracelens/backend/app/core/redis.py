@@ -24,8 +24,8 @@ async def get_redis_client() -> aioredis.Redis | None:
             client = aioredis.from_url(
                 settings.REDIS_URL,
                 decode_responses=True,
-                socket_timeout=1.0,
-                socket_connect_timeout=0.2,
+                socket_timeout=5.0,
+                socket_connect_timeout=5.0,
             )
             # Ping to verify connection
             await client.ping()

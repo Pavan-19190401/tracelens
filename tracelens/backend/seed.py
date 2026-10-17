@@ -53,8 +53,7 @@ SAMPLE_ERRORS = [
 
 
 async def seed_demo_data():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    print("[Seed] Starting demo seeding...")
 
     async with AsyncSessionLocal() as session:
         # 1. Create Demo User
@@ -71,6 +70,7 @@ async def seed_demo_data():
             session.add(user)
             await session.commit()
             await session.refresh(user)
+            print("[Seed] Created demo user: demo@tracelens.dev")
 
         # 2. Create Demo Project
         proj_res = await session.execute(
@@ -86,6 +86,7 @@ async def seed_demo_data():
             session.add(project)
             await session.commit()
             await session.refresh(project)
+            print("[Seed] Created demo project: support-agent")
 
         # 3. Create Demo API Key
         raw_key = "tl_live_demo1234567890abcdef1234567890abcdef"
@@ -101,6 +102,8 @@ async def seed_demo_data():
                 key_hash=key_hash,
             )
             session.add(api_key)
+            await session.commit()
+            print("[Seed] Created demo API key")
 
         # 4. Create Prompt Versions
         pv_res = await session.execute(
