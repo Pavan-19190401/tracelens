@@ -25,13 +25,23 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("tracelens.backend")
 
 
+import asyncio
+from tracelens.backend.app.workers.persister import run_persister_loop
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: ensure tables exist
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("TraceLens backend started with tables verified.")
+    # In-process persister task for memory queue drain
+    persister_task = asyncio.create_task(run_persister_loop(batch_size=50, poll_interval=0.5))
     yield
+    persister_task.cancel()
+    try:
+        await persister_task
+    except asyncio.CancelledError:
+        pass
     # Shutdown
     await engine.dispose()
     logger.info("TraceLens backend stopped.")
