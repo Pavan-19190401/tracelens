@@ -1,0 +1,43 @@
+services:
+  # 1. FastAPI Ingestion & REST API Web Service
+  - type: web
+    name: tracelens-api
+    runtime: docker
+    dockerfilePath: ./tracelens/backend/Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false # Set to Neon PostgreSQL URL: postgresql+asyncpg://...
+      - key: REDIS_URL
+        sync: false # Set to Upstash Redis URL: rediss://...
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://tracelens.vercel.app,http://localhost:3000
+
+  # 2. Background Persistence & Alerting Worker
+  - type: worker
+    name: tracelens-worker
+    runtime: docker
+    dockerfilePath: ./tracelens/backend/Dockerfile
+    dockerContext: .
+    dockerCommand: python -m tracelens.backend.app.workers.run_worker
+    plan: starter
+    region: oregon
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: tracelens-api
+          envVarKey: SECRET_KEY

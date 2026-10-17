@@ -1,0 +1,109 @@
+name: Production Deployment & Smoke Verification
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-infrastructure:
+    name: Trigger Cloud Deployments (Render & Vercel)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Trigger Render Deploy Hook (API & Worker)
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          echo "Triggering Render webhook deploy..."
+          curl -f -X POST "$RENDER_DEPLOY_HOOK_URL"
+
+      - name: Deploy Dashboard to Vercel
+        if: env.VERCEL_TOKEN != ''
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: "--prod"
+          working-directory: tracelens/dashboard
+
+  post-deploy-smoke-test:
+    name: Post-Deploy Smoke Verification
+    needs: [deploy-infrastructure]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Test Dependencies
+        run: pip install httpx
+
+      - name: Execute Live Smoke Test
+        env:
+          LIVE_API_URL: ${{ secrets.LIVE_API_URL || 'http://localhost:8000' }}
+          LIVE_API_KEY: ${{ secrets.LIVE_API_KEY || 'tl_live_smoke_key' }}
+        run: |
+          python - << 'EOF'
+          import os, sys, time, httpx
+
+          api_url = os.environ.get("LIVE_API_URL", "").rstrip("/")
+          api_key = os.environ.get("LIVE_API_KEY", "")
+
+          print(f"Executing post-deploy smoke test against: {api_url}")
+          client = httpx.Client(timeout=15.0)
+
+          # 1. Health check
+          health_res = client.get(f"{api_url}/health")
+          print(f"1. Health check status: {health_res.status_code}")
+          if health_res.status_code != 200:
+              print(f"Health check failed: {health_res.text}")
+              sys.exit(1)
+
+          # 2. Ingest one smoke test span
+          smoke_trace_id = f"smoke_trc_{int(time.time())}"
+          payload = {
+              "traces": [{
+                  "id": smoke_trace_id,
+                  "name": "post_deploy_smoke_trace",
+                  "start_time": "2026-10-17T12:00:00Z",
+                  "status": "SUCCESS",
+                  "input": {"check": "smoke_test_ping"},
+                  "output": "pong",
+                  "total_tokens": 10,
+                  "cost_usd": 0.0001,
+              }],
+              "spans": [{
+                  "id": f"smoke_spn_{int(time.time())}",
+                  "trace_id": smoke_trace_id,
+                  "name": "smoke_llm_span",
+                  "span_kind": "llm",
+                  "start_time": "2026-10-17T12:00:00.100Z",
+                  "latency_ms": 50.0,
+                  "status": "SUCCESS",
+                  "model": "gpt-4o-mini",
+                  "tokens": {"prompt_tokens": 5, "completion_tokens": 5, "total_tokens": 10},
+                  "cost_usd": 0.0001,
+              }]
+          }
+
+          ingest_res = client.post(
+              f"{api_url}/v1/ingest",
+              json=payload,
+              headers={"X-API-Key": api_key}
+          )
+          print(f"2. Ingestion status: {ingest_res.status_code}")
+          if ingest_res.status_code not in (200, 202):
+              print(f"Ingest test failed: {ingest_res.text}")
+              sys.exit(1)
+
+          print("Post-deploy smoke test PASSED successfully!")
+          EOF

@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tracelens-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: tracelens
+      POSTGRES_PASSWORD: tracelens_secret_pw
+      POSTGRES_DB: tracelens
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracelens -d tracelens"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tracelens-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: tracelens/backend/Dockerfile
+    container_name: tracelens-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://tracelens:tracelens_secret_pw@postgres:5432/tracelens
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=local_docker_super_secret_jwt_key_at_least_32_chars
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - ENVIRONMENT=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: tracelens/backend/Dockerfile
+    container_name: tracelens-worker
+    restart: always
+    command: ["python", "-m", "tracelens.backend.app.workers.run_worker"]
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://tracelens:tracelens_secret_pw@postgres:5432/tracelens
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=local_docker_super_secret_jwt_key_at_least_32_chars
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+
+  dashboard:
+    build:
+      context: ./tracelens/dashboard
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    container_name: tracelens-dashboard
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:
