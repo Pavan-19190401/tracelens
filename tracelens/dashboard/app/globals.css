@@ -4,18 +4,18 @@
 
 :root {
   --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  --foreground: 0 0% 5%;
   --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --border: 214.3 31.8% 91.4%;
+  --card-foreground: 0 0% 5%;
+  --border: 0 0% 90%;
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 7%;
-  --card-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
+  --background: 0 0% 0%;       /* Pure pitch black (#000000), not navy blue */
+  --foreground: 0 0% 98%;      /* Crisp high-contrast white text */
+  --card: 0 0% 4%;             /* Deep obsidian black card (#0a0a0a) */
+  --card-foreground: 0 0% 98%;
+  --border: 0 0% 14%;          /* Neutral charcoal border (#242424) */
 }
 
 body {

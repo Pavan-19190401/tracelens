@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
 import { CrosshairOverlay } from "@/components/CrosshairOverlay";
+import { CloudAtlasBackground } from "@/components/CloudAtlasBackground";
 
 export const metadata: Metadata = {
   title: "TraceLens — Open-source LLM Tracing & Evaluation Platform",
@@ -22,6 +23,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background antialiased flex flex-col relative overflow-x-hidden">
         <QueryProvider>
           <ThemeProvider>
+            <CloudAtlasBackground />
             <CrosshairOverlay />
             <div className="relative z-10 flex flex-col min-h-screen">
               <Navbar />
