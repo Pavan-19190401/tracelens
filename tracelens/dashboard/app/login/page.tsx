@@ -291,8 +291,13 @@ export default function LoginPage() {
 
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-zinc-900/90 border border-zinc-800 p-2 flex items-center justify-center shadow-xl mb-3 backdrop-blur-md">
-            <img src="/logo.png" alt="TraceLens Logo" className="w-full h-full object-contain" />
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-zinc-900/80 border border-zinc-800/80 p-2.5 flex items-center justify-center shadow-2xl mb-3 backdrop-blur-xl relative group">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-blue-600/20 to-purple-600/20 blur-sm pointer-events-none" />
+            <img
+              src="/logo.png"
+              alt="TraceLens Logo"
+              className="w-full h-full object-contain relative z-10 filter drop-shadow-[0_0_12px_rgba(59,130,246,0.6)]"
+            />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Welcome to TraceLens

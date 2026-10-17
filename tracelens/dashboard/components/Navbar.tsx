@@ -48,9 +48,9 @@ export function Navbar() {
   return (
     <header className="h-16 border-b border-border/80 bg-card/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center space-x-6">
-        <Link href="/" className="flex items-center space-x-2.5">
-          <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center bg-zinc-900/80 border border-zinc-700/50 p-1 shadow-sm">
-            <img src="/logo.png" alt="TraceLens" className="w-full h-full object-contain" />
+        <Link href="/" className="flex items-center space-x-2.5 group">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-zinc-900/90 border border-zinc-800 shadow-sm group-hover:border-blue-500/50 transition-all p-1">
+            <img src="/logo.png" alt="TraceLens" className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
           </div>
           <span className="font-bold text-xl tracking-tight">TraceLens</span>
           <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium border border-blue-500/20">
