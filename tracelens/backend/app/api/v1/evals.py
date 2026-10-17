@@ -1,11 +1,10 @@
 """Evaluation endpoints: run trigger, status inspection, and side-by-side win/loss comparison."""
 
 import asyncio
-from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from tracelens.backend.app.api.deps import get_current_user
 from tracelens.backend.app.core.database import get_db
 from tracelens.backend.app.models.dataset import Dataset, DatasetItem
@@ -52,7 +51,7 @@ async def trigger_eval_run(
     return eval_run
 
 
-@router.get("", response_model=List[EvalRunResponse])
+@router.get("", response_model=list[EvalRunResponse])
 async def list_eval_runs(
     project_id: str = Query(...),
     db: AsyncSession = Depends(get_db),
@@ -94,7 +93,7 @@ async def compare_eval_runs(
     wins_a = 0
     wins_b = 0
     ties = 0
-    comparison_items: List[EvalCompareItem] = []
+    comparison_items: list[EvalCompareItem] = []
 
     for item in dataset_items:
         score_a = results_a.get(item.id).score if item.id in results_a else None

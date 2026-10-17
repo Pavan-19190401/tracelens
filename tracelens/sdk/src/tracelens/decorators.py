@@ -33,12 +33,14 @@ class TraceSpanContext(AbstractContextManager, AbstractAsyncContextManager):
         tags: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
         input_data: Any = None,
+        model: str | None = None,
     ) -> None:
         self.name = name
         self.kind = kind
         self.tags = list(tags) if tags else []
         self.metadata = dict(metadata) if metadata else {}
         self.input_data = input_data
+        self.model = model
 
         self.span: Span | None = None
         self.created_trace: Trace | None = None
@@ -79,6 +81,7 @@ class TraceSpanContext(AbstractContextManager, AbstractAsyncContextManager):
             input=self.input_data,
             tags=self.tags,
             metadata=self.metadata,
+            model=self.model,
         )
         self._span_token = set_current_span(self.span)
         return self.span
@@ -142,6 +145,7 @@ def trace_span(
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
     input_data: Any = None,
+    model: str | None = None,
 ) -> TraceSpanContext:
     """Create a context manager for tracing a block of execution.
 
@@ -153,6 +157,7 @@ def trace_span(
         tags=tags,
         metadata=metadata,
         input_data=input_data,
+        model=model,
     )
 
 
@@ -184,6 +189,7 @@ def trace(
     metadata: dict[str, Any] | None = None,
     capture_input: bool = True,
     capture_output: bool = True,
+    model: str | None = None,
 ) -> Callable:
     """Decorator to trace function executions (sync and async).
 
@@ -194,6 +200,7 @@ def trace(
         metadata: Optional custom metadata attributes.
         capture_input: Whether to serialize arguments into the span input.
         capture_output: Whether to serialize the return value into the span output.
+        model: Optional model name (e.g. 'gpt-4o', 'claude-3-5-sonnet-20241022').
     """
 
     def decorator(fn: Callable) -> Callable:
@@ -213,6 +220,7 @@ def trace(
                     tags=tags,
                     metadata=metadata,
                     input_data=input_data,
+                    model=model,
                 )
                 async with ctx as span:
                     result = await fn(*args, **kwargs)
@@ -235,6 +243,7 @@ def trace(
                     tags=tags,
                     metadata=metadata,
                     input_data=input_data,
+                    model=model,
                 )
                 with ctx as span:
                     result = fn(*args, **kwargs)

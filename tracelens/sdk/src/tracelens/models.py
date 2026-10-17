@@ -43,6 +43,20 @@ class Span(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     tags: list[str] = Field(default_factory=list)
 
+    def set_token_usage(self, prompt_tokens: int = 0, completion_tokens: int = 0) -> None:
+        from .pricing import calculate_cost
+
+        self.tokens = TokenUsage(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=prompt_tokens + completion_tokens,
+        )
+        if self.model:
+            self.cost_usd = calculate_cost(self.model, prompt_tokens, completion_tokens)
+
+    def set_metadata(self, metadata: dict[str, Any]) -> None:
+        self.metadata.update(metadata)
+
 
 class Trace(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))

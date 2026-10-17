@@ -1,13 +1,13 @@
 """Tests for evaluation scorers, async eval execution, side-by-side comparison, and alert worker."""
 
 from datetime import datetime, timezone
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from tracelens.backend.app.models.alert import AlertRule
 from tracelens.backend.app.models.dataset import Dataset, DatasetItem
-from tracelens.backend.app.models.eval import EvalResult, EvalRun
+from tracelens.backend.app.models.eval import EvalRun
 from tracelens.backend.app.models.trace import Trace
 from tracelens.backend.app.services.evals.runner import execute_eval_run
 from tracelens.backend.app.services.evals.scorers import (

@@ -116,6 +116,31 @@ async def process_batch(items_json: list[str], db: AsyncSession) -> int:
         except Exception as e:
             logger.error("Failed to parse raw ingest item: %s", e)
 
+    # Roll up span tokens and costs to trace if not explicitly provided
+    trace_span_tokens: dict[str, dict[str, Any]] = {}
+    for s_obj in spans_to_insert:
+        if s_obj.trace_id not in trace_span_tokens:
+            trace_span_tokens[s_obj.trace_id] = {
+                "total": 0,
+                "prompt": 0,
+                "completion": 0,
+                "cost": 0.0,
+            }
+        trace_span_tokens[s_obj.trace_id]["total"] += (s_obj.total_tokens or 0)
+        trace_span_tokens[s_obj.trace_id]["prompt"] += (s_obj.prompt_tokens or 0)
+        trace_span_tokens[s_obj.trace_id]["completion"] += (s_obj.completion_tokens or 0)
+        trace_span_tokens[s_obj.trace_id]["cost"] += (s_obj.cost_usd or 0.0)
+
+    for t_id, roll in trace_span_tokens.items():
+        if t_id in traces_to_upsert:
+            t_data = traces_to_upsert[t_id]
+            if not t_data.get("total_tokens"):
+                t_data["total_tokens"] = roll["total"]
+                t_data["prompt_tokens"] = roll["prompt"]
+                t_data["completion_tokens"] = roll["completion"]
+            if not t_data.get("cost_usd"):
+                t_data["cost_usd"] = roll["cost"]
+
     # Upsert Traces
     for t_id, t_dict in traces_to_upsert.items():
         existing = await db.execute(select(Trace).where(Trace.id == t_id))

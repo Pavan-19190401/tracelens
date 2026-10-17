@@ -1,16 +1,14 @@
 """Asynchronous evaluation execution runner."""
 
-import asyncio
-from datetime import datetime, timezone
 import inspect
 import logging
 import time
-from typing import Any, Dict, Optional
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from tracelens.backend.app.core.database import AsyncSessionLocal
-from tracelens.backend.app.models.dataset import Dataset, DatasetItem
+from tracelens.backend.app.models.dataset import DatasetItem
 from tracelens.backend.app.models.eval import EvalResult, EvalRun
 from tracelens.backend.app.models.prompt import PromptVersion
 from tracelens.backend.app.services.evals.scorers import get_scorer
@@ -19,7 +17,7 @@ logger = logging.getLogger("tracelens.evals")
 
 
 async def execute_eval_run(
-    eval_run_id: str, session: Optional[AsyncSession] = None
+    eval_run_id: str, session: AsyncSession | None = None
 ) -> None:
     """Asynchronously execute an evaluation run over its dataset items."""
     if session is not None:

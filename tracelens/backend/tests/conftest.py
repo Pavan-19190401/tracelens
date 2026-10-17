@@ -11,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["SECRET_KEY"] = "test_secret_key_for_unit_tests_32chars_long"
 
-from tracelens.backend.app.models.base import Base
 from tracelens.backend.app.core.database import get_db
 from tracelens.backend.app.main import app
+from tracelens.backend.app.models.base import Base
 
 TEST_DB_FILE = "./test_tracelens_temp.db"
 

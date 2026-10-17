@@ -1,13 +1,12 @@
 """Alert evaluation worker checking rolling metrics and dispatching webhooks."""
 
 import asyncio
-from datetime import datetime, timedelta, timezone
 import logging
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timedelta, timezone
+
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from tracelens.backend.app.core.database import AsyncSessionLocal
 from tracelens.backend.app.models.alert import AlertEvent, AlertRule
 from tracelens.backend.app.models.trace import Trace
@@ -48,7 +47,7 @@ async def dispatch_webhook(webhook_url: str, rule_name: str, metric_type: str, v
         return False
 
 
-async def evaluate_rule(rule: AlertRule, session: AsyncSession) -> Optional[AlertEvent]:
+async def evaluate_rule(rule: AlertRule, session: AsyncSession) -> AlertEvent | None:
     """Evaluate a single alert rule against its rolling time window."""
     window_minutes = rule.window_minutes or 5
     since = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
@@ -116,12 +115,12 @@ async def evaluate_rule(rule: AlertRule, session: AsyncSession) -> Optional[Aler
     return None
 
 
-async def run_alert_check_cycle(run_once: bool = False) -> List[AlertEvent]:
+async def run_alert_check_cycle(run_once: bool = False) -> list[AlertEvent]:
     """Execute one check cycle evaluating all enabled alert rules."""
     events = []
     async with AsyncSessionLocal() as session:
         rules_res = await session.execute(
-            select(AlertRule).where(AlertRule.enabled == True)
+            select(AlertRule).where(AlertRule.enabled.is_(True))
         )
         rules = rules_res.scalars().all()
         for rule in rules:

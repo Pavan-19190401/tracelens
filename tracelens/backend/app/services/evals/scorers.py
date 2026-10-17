@@ -3,7 +3,9 @@
 import json
 import os
 import re
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
+
 import httpx
 
 
@@ -14,7 +16,7 @@ class ScorerResult:
         self.passed = passed
         self.reason = reason
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "score": self.score,
             "passed": self.passed,
@@ -71,7 +73,7 @@ def score_regex(output: Any, pattern: str) -> ScorerResult:
         return ScorerResult(score=0.0, passed=False, reason=f"Invalid regex pattern: {e}")
 
 
-def score_json_valid(output: Any, required_keys: Optional[list] = None) -> ScorerResult:
+def score_json_valid(output: Any, required_keys: list | None = None) -> ScorerResult:
     """Validate that output is valid JSON and optionally contains required keys."""
     if isinstance(output, (dict, list)):
         parsed = output
@@ -98,8 +100,8 @@ async def score_llm_judge(
     output_text: str,
     criteria: str,
     provider: str = "gemini",
-    model: Optional[str] = None,
-    api_key: Optional[str] = None,
+    model: str | None = None,
+    api_key: str | None = None,
 ) -> ScorerResult:
     """Evaluate output quality using LLM-as-a-judge (Gemini default, OpenAI/Anthropic configurable)."""
     judge_prompt = f"""You are an objective evaluation judge assessing the quality of an AI output.
@@ -173,7 +175,7 @@ Respond ONLY with a JSON object in this format:
 
 
 # Custom Scorer Registry
-_CUSTOM_SCORERS: Dict[str, Callable] = {}
+_CUSTOM_SCORERS: dict[str, Callable] = {}
 
 
 def register_scorer(name: str, scorer_fn: Callable) -> None:
@@ -181,7 +183,7 @@ def register_scorer(name: str, scorer_fn: Callable) -> None:
     _CUSTOM_SCORERS[name] = scorer_fn
 
 
-def get_scorer(name: str) -> Optional[Callable]:
+def get_scorer(name: str) -> Callable | None:
     """Retrieve scorer by name."""
     builtins = {
         "exact_match": score_exact_match,
