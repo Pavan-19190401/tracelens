@@ -19,6 +19,15 @@ export interface FirebaseCredentials {
   appId?: string;
 }
 
+const DEFAULT_CONFIG: FirebaseCredentials = {
+  apiKey: "AIzaSyBFzaiw7zlklsh4AFUB3n_aVhbwu24LD2A",
+  authDomain: "llm1-772fa.firebaseapp.com",
+  projectId: "llm1-772fa",
+  storageBucket: "llm1-772fa.firebasestorage.app",
+  messagingSenderId: "192727695140",
+  appId: "1:192727695140:web:224a2e4ad202e2e9577db1",
+};
+
 export function getFirebaseConfig(): FirebaseCredentials {
   if (typeof window !== "undefined") {
     const saved = localStorage.getItem("tracelens_firebase_config");
@@ -35,12 +44,12 @@ export function getFirebaseConfig(): FirebaseCredentials {
   }
 
   return {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || DEFAULT_CONFIG.apiKey,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || DEFAULT_CONFIG.authDomain,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || DEFAULT_CONFIG.projectId,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || DEFAULT_CONFIG.storageBucket,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || DEFAULT_CONFIG.messagingSenderId,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || DEFAULT_CONFIG.appId,
   };
 }
 
