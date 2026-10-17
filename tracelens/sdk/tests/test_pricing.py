@@ -1,6 +1,6 @@
 """Unit tests for model pricing and cost calculation."""
 
-from tracelens.pricing import calculate_cost, load_pricing
+from tracelens import calculate_cost, load_pricing
 
 
 def test_pricing_loading():

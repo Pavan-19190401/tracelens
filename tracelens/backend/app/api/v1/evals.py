@@ -52,6 +52,19 @@ async def trigger_eval_run(
     return eval_run
 
 
+@router.get("", response_model=List[EvalRunResponse])
+async def list_eval_runs(
+    project_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """List all evaluation runs for a project ordered by creation time desc."""
+    res = await db.execute(
+        select(EvalRun).where(EvalRun.project_id == project_id).order_by(EvalRun.created_at.desc())
+    )
+    return res.scalars().all()
+
+
 @router.get("/compare", response_model=EvalCompareResponse)
 async def compare_eval_runs(
     a: str = Query(..., description="ID of baseline eval run A"),

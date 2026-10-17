@@ -4,9 +4,7 @@ import asyncio
 
 import pytest
 
-from tracelens.client import init
-from tracelens.context import get_current_span
-from tracelens.decorators import trace, trace_span
+from tracelens import get_current_span, init, trace, trace_span
 
 
 @pytest.fixture(autouse=True)

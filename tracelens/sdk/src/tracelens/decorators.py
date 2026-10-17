@@ -11,8 +11,8 @@ from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from typing import Any
 
-from tracelens.client import get_client
-from tracelens.context import (
+from .client import get_client
+from .context import (
     get_current_span,
     get_current_trace,
     reset_current_span,
@@ -20,7 +20,7 @@ from tracelens.context import (
     set_current_span,
     set_current_trace,
 )
-from tracelens.models import Span, SpanKind, Trace, utc_now_iso
+from .models import Span, SpanKind, Trace, utc_now_iso
 
 
 class TraceSpanContext(AbstractContextManager, AbstractAsyncContextManager):

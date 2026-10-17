@@ -8,9 +8,9 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from tracelens.decorators import trace_span
-from tracelens.models import TokenUsage
-from tracelens.pricing import calculate_cost
+from ..decorators import trace_span
+from ..models import TokenUsage
+from ..pricing import calculate_cost
 
 logger = logging.getLogger("tracelens.openai")
 

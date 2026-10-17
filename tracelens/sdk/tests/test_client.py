@@ -5,8 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tracelens.client import TraceLensClient
-from tracelens.models import Span
+from tracelens import Span, TraceLensClient
 
 
 def test_non_blocking_enqueue():

@@ -12,7 +12,7 @@ from typing import Any
 
 import httpx
 
-from tracelens.models import IngestPayload, Span, Trace
+from .models import IngestPayload, Span, Trace
 
 logger = logging.getLogger("tracelens")
 

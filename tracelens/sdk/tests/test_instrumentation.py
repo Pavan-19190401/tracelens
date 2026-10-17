@@ -4,10 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tracelens.client import init
-from tracelens.decorators import trace_span
-from tracelens.instrumentation.anthropic import wrap_anthropic
-from tracelens.instrumentation.openai import wrap_openai
+from tracelens import init, trace_span, wrap_anthropic, wrap_openai
 
 
 @pytest.fixture(autouse=True)

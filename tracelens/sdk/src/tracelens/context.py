@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import contextvars
 
-from tracelens.models import Span, Trace
+from .models import Span, Trace
 
 # ContextVar storing currently active Trace
 _current_trace: contextvars.ContextVar[Trace | None] = contextvars.ContextVar(

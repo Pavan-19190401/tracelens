@@ -2,9 +2,7 @@
 
 import pytest
 
-from tracelens.client import init
-from tracelens.context import get_current_span
-from tracelens.decorators import trace
+from tracelens import get_current_span, init, trace
 
 
 @pytest.fixture(autouse=True)
