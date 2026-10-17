@@ -89,6 +89,63 @@ export default function LoginPage() {
     if (cfg.authDomain) setAuthDomain(cfg.authDomain);
     if (cfg.projectId) setProjectId(cfg.projectId);
     if (cfg.appId) setAppId(cfg.appId);
+
+    // Process Direct GitHub OAuth Callback
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get("code");
+      if (code) {
+        setOauthLoading("github");
+        fetch("/api/auth/github", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error) {
+              setError(data.error);
+            } else {
+              if (data.email) localStorage.setItem("tracelens_user_email", data.email);
+              if (data.name) localStorage.setItem("tracelens_user_name", data.name);
+              localStorage.setItem("tracelens_token", data.access_token);
+              window.location.href = "/";
+            }
+          })
+          .catch((err) => {
+            setError(err.message || "Failed to complete GitHub sign-in.");
+          })
+          .finally(() => {
+            setOauthLoading(null);
+          });
+      }
+
+      // Process Direct Google OAuth Callback
+      const hash = window.location.hash;
+      if (hash && hash.includes("access_token=")) {
+        setOauthLoading("google");
+        const params = new URLSearchParams(hash.replace(/^#/, ""));
+        const accessToken = params.get("access_token");
+        if (accessToken) {
+          fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          })
+            .then((res) => res.json())
+            .then((userInfo) => {
+              if (userInfo.email) localStorage.setItem("tracelens_user_email", userInfo.email);
+              if (userInfo.name) localStorage.setItem("tracelens_user_name", userInfo.name);
+              localStorage.setItem("tracelens_token", `tl_google_${Date.now()}`);
+              window.location.href = "/";
+            })
+            .catch(() => {
+              setError("Failed to fetch Google profile.");
+            })
+            .finally(() => {
+              setOauthLoading(null);
+            });
+        }
+      }
+    }
   }, []);
 
   const fullPhoneNumber = `${selectedCountry} ${phoneNumber.trim()}`;
