@@ -9,6 +9,49 @@ import CodeSlots from "@/components/react-bits/CodeSlots";
 type AuthTab = "email" | "phone";
 type OtpStatus = "idle" | "error" | "success";
 
+interface CountryCode {
+  code: string;
+  country: string;
+  flag: string;
+  name: string;
+}
+
+const COUNTRY_CODES: CountryCode[] = [
+  { code: "+1", country: "US", flag: "🇺🇸", name: "United States" },
+  { code: "+91", country: "IN", flag: "🇮🇳", name: "India" },
+  { code: "+44", country: "GB", flag: "🇬🇧", name: "United Kingdom" },
+  { code: "+1", country: "CA", flag: "🇨🇦", name: "Canada" },
+  { code: "+61", country: "AU", flag: "🇦🇺", name: "Australia" },
+  { code: "+49", country: "DE", flag: "🇩🇪", name: "Germany" },
+  { code: "+33", country: "FR", flag: "🇫🇷", name: "France" },
+  { code: "+971", country: "AE", flag: "🇦🇪", name: "UAE" },
+  { code: "+65", country: "SG", flag: "🇸🇬", name: "Singapore" },
+  { code: "+81", country: "JP", flag: "🇯🇵", name: "Japan" },
+  { code: "+55", country: "BR", flag: "🇧🇷", name: "Brazil" },
+  { code: "+966", country: "SA", flag: "🇸🇦", name: "Saudi Arabia" },
+  { code: "+27", country: "ZA", flag: "🇿🇦", name: "South Africa" },
+  { code: "+92", country: "PK", flag: "🇵🇰", name: "Pakistan" },
+  { code: "+880", country: "BD", flag: "🇧🇩", name: "Bangladesh" },
+  { code: "+62", country: "ID", flag: "🇮🇩", name: "Indonesia" },
+  { code: "+60", country: "MY", flag: "🇲🇾", name: "Malaysia" },
+  { code: "+63", country: "PH", flag: "🇵🇭", name: "Philippines" },
+  { code: "+39", country: "IT", flag: "🇮🇹", name: "Italy" },
+  { code: "+34", country: "ES", flag: "🇪🇸", name: "Spain" },
+  { code: "+31", country: "NL", flag: "🇳🇱", name: "Netherlands" },
+  { code: "+41", country: "CH", flag: "🇨🇭", name: "Switzerland" },
+  { code: "+46", country: "SE", flag: "🇸🇪", name: "Sweden" },
+  { code: "+64", country: "NZ", flag: "🇳🇿", name: "New Zealand" },
+  { code: "+353", country: "IE", flag: "🇮🇪", name: "Ireland" },
+  { code: "+82", country: "KR", flag: "🇰🇷", name: "South Korea" },
+  { code: "+234", country: "NG", flag: "🇳🇬", name: "Nigeria" },
+  { code: "+254", country: "KE", flag: "🇰🇪", name: "Kenya" },
+  { code: "+20", country: "EG", flag: "🇪🇬", name: "Egypt" },
+  { code: "+90", country: "TR", flag: "🇹🇷", name: "Turkey" },
+  { code: "+52", country: "MX", flag: "🇲🇽", name: "Mexico" },
+  { code: "+54", country: "AR", flag: "🇦🇷", name: "Argentina" },
+  { code: "+7", country: "RU", flag: "🇷🇺", name: "Russia" },
+];
+
 export default function LoginPage() {
   const router = useRouter();
   const [tab, setTab] = useState<AuthTab>("email");
@@ -18,16 +61,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
 
-  // Phone OTP state
-  const [phone, setPhone] = useState("");
+  // Phone state with country code selector
+  const [selectedCountry, setSelectedCountry] = useState<string>("+91");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpStatus, setOtpStatus] = useState<OtpStatus>("idle");
-  const [otpNotification, setOtpNotification] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   // General state
   const [error, setError] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+
+  const fullPhoneNumber = `${selectedCountry} ${phoneNumber.trim()}`;
 
   // Email login submit
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -49,20 +95,31 @@ export default function LoginPage() {
   // Send Phone OTP
   const handleSendOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!phone || phone.trim().length < 6) {
-      setError("Please enter a valid phone number with country code (e.g. +1 555-0199 or +91 9876543210).");
+    const cleanDigits = phoneNumber.replace(/\D/g, "");
+    if (!cleanDigits || cleanDigits.length < 5) {
+      setError("Please enter a valid phone number for your selected country code.");
       return;
     }
     setError(null);
     setOtpLoading(true);
 
     try {
-      const res = await api.sendPhoneOtp(phone);
+      const formatted = `${selectedCountry}${cleanDigits}`;
+      await api.sendPhoneOtp(formatted);
       setOtpSent(true);
       setOtpStatus("idle");
-      setOtpNotification(`OTP sent! For testing, use code: ${res.testCode || "748291"}`);
+      setResendCooldown(30);
+      const timer = setInterval(() => {
+        setResendCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     } catch (err: any) {
-      setError(err.message || "Failed to send verification code. Please try again.");
+      setError(err.message || "Failed to send verification code. Please check the number and try again.");
     } finally {
       setOtpLoading(false);
     }
@@ -72,15 +129,17 @@ export default function LoginPage() {
   const handleOtpComplete = async (code: string) => {
     setError(null);
     try {
-      await api.verifyPhoneOtp(phone, code);
+      const cleanDigits = phoneNumber.replace(/\D/g, "");
+      const formatted = `${selectedCountry}${cleanDigits}`;
+      await api.verifyPhoneOtp(formatted, code);
       setOtpStatus("success");
       setTimeout(() => {
         router.push("/");
         window.location.href = "/";
-      }, 900);
+      }, 850);
     } catch (err: any) {
       setOtpStatus("error");
-      setError(err.message || "Incorrect verification code. Please try again.");
+      setError(err.message || "Incorrect verification code. Please check your SMS and re-enter.");
     }
   };
 
@@ -178,7 +237,7 @@ export default function LoginPage() {
           </span>
         </div>
 
-        {/* Tab Switcher: Email vs Phone */}
+        {/* Tab Switcher: Email vs Mobile Number (no "(OTP)" in braces) */}
         <div className="flex rounded-xl bg-zinc-900/90 p-1 border border-zinc-800 mb-6">
           <button
             type="button"
@@ -208,7 +267,7 @@ export default function LoginPage() {
             }`}
             data-cursor-label="Phone"
           >
-            Mobile Number (OTP)
+            Mobile Number
           </button>
         </div>
 
@@ -227,12 +286,12 @@ export default function LoginPage() {
           <form onSubmit={handleEmailSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                Email Address
+                Email Address / Gmail
               </label>
               <input
                 type="email"
                 required
-                placeholder="name@company.com"
+                placeholder="developer@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-900/70 px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -278,7 +337,7 @@ export default function LoginPage() {
           </form>
         )}
 
-        {/* TAB 2: MOBILE NUMBER (OTP) LOGIN */}
+        {/* TAB 2: MOBILE NUMBER LOGIN */}
         {tab === "phone" && (
           <div>
             {!otpSent ? (
@@ -287,18 +346,42 @@ export default function LoginPage() {
                   <label className="block text-xs font-medium text-zinc-300 mb-1.5">
                     Mobile Phone Number
                   </label>
-                  <div className="relative">
-                    <input
-                      type="tel"
-                      required
-                      placeholder="+1 (555) 234-5678 or +91 9876543210"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full rounded-xl border border-zinc-800 bg-zinc-900/70 px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    />
+                  
+                  {/* Country Code Selector + Number Input */}
+                  <div className="flex gap-2">
+                    <div className="relative w-36 shrink-0">
+                      <select
+                        value={selectedCountry}
+                        onChange={(e) => setSelectedCountry(e.target.value)}
+                        className="cursor-target w-full appearance-none rounded-xl border border-zinc-800 bg-zinc-900/90 pl-3 pr-8 py-2.5 text-xs text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        data-cursor-label="Country Code"
+                      >
+                        {COUNTRY_CODES.map((c) => (
+                          <option key={`${c.country}-${c.code}`} value={c.code} className="bg-zinc-900 text-zinc-100 py-1">
+                            {c.flag} {c.code} ({c.country})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-400">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <div className="relative flex-1">
+                      <input
+                        type="tel"
+                        required
+                        placeholder="98765 43210"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        className="w-full rounded-xl border border-zinc-800 bg-zinc-900/70 px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      />
+                    </div>
                   </div>
                   <p className="text-[11px] text-zinc-500 mt-1.5">
-                    We will send a 6-digit one-time verification code via SMS.
+                    We will send a 6-digit real-time verification code to {fullPhoneNumber || "your phone"}.
                   </p>
                 </div>
 
@@ -312,7 +395,7 @@ export default function LoginPage() {
                     {otpLoading ? (
                       <>
                         <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Sending verification code...</span>
+                        <span>Sending SMS verification code...</span>
                       </>
                     ) : (
                       "Send Verification Code"
@@ -325,41 +408,26 @@ export default function LoginPage() {
                 {/* Phone details header */}
                 <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/80 border border-zinc-800 text-xs">
                   <div>
-                    <span className="text-zinc-400">Verifying phone: </span>
-                    <span className="font-mono text-zinc-100 font-medium">{phone}</span>
+                    <span className="text-zinc-400">Code sent to: </span>
+                    <span className="font-mono text-zinc-100 font-medium">{fullPhoneNumber}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
                       setOtpSent(false);
-                      setOtpNotification(null);
                       setOtpStatus("idle");
                     }}
                     className="cursor-target text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors"
                     data-cursor-label="Change Phone"
                   >
-                    Change
+                    Change Number
                   </button>
                 </div>
-
-                {otpNotification && (
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-400 flex items-center justify-between">
-                    <span>{otpNotification}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleOtpComplete("748291")}
-                      className="cursor-target text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
-                      data-cursor-label="Auto-enter"
-                    >
-                      Fill
-                    </button>
-                  </div>
-                )}
 
                 {/* React Bits CodeSlots Component */}
                 <div className="py-2 flex flex-col items-center justify-center">
                   <label className="text-xs font-medium text-zinc-400 mb-3">
-                    Enter the 6-digit verification code:
+                    Enter the 6-digit code received on your phone:
                   </label>
                   <CodeSlots
                     length={6}
@@ -384,17 +452,21 @@ export default function LoginPage() {
                   />
                 </div>
 
-                {/* Resend actions */}
+                {/* Resend actions with timer */}
                 <div className="flex items-center justify-between text-xs text-zinc-500 pt-2 border-t border-zinc-800/80">
-                  <span>Didn&apos;t receive code?</span>
+                  <span>Didn&apos;t receive SMS?</span>
                   <button
                     type="button"
                     onClick={() => handleSendOtp()}
-                    disabled={otpLoading}
+                    disabled={otpLoading || resendCooldown > 0}
                     className="cursor-target font-semibold text-blue-400 hover:text-blue-300 disabled:opacity-50"
-                    data-cursor-label="Resend OTP"
+                    data-cursor-label="Resend SMS"
                   >
-                    {otpLoading ? "Sending..." : "Resend SMS"}
+                    {resendCooldown > 0
+                      ? `Resend in ${resendCooldown}s`
+                      : otpLoading
+                      ? "Sending..."
+                      : "Resend Code"}
                   </button>
                 </div>
               </div>
