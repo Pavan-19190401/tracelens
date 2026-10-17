@@ -23,11 +23,8 @@ export function CloudAtlasBackground() {
         wind={0.12}
         billow={1.25}
         speed={0.65}
-        interactive={true}
-        cursorStrength={1.5}
-        cursorRadius={0.2}
-        resolution={0.45}
-        className="w-full h-full pointer-events-auto"
+        interactive={false}
+        className="w-full h-full pointer-events-none"
       />
     </div>
   );

@@ -350,6 +350,8 @@ export default function CloudAtlas({
   }, []);
 
   useEffect(() => {
+    if (!interactive) return;
+
     const onPointerMove = (e) => {
       const container = containerRef.current;
       if (!container) return;
@@ -378,7 +380,7 @@ export default function CloudAtlas({
       document.documentElement.removeEventListener('pointerleave', onPointerLeave);
       window.removeEventListener('pointerup', onPointerLeave);
     };
-  }, []);
+  }, [interactive]);
 
   useEffect(() => {
     const container = containerRef.current;
