@@ -119,6 +119,176 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
           total_tokens: 412900,
         } as T;
       }
+      if (path.startsWith("/v1/metrics/timeseries")) {
+        const now = Date.now();
+        const points = [];
+        for (let i = 24; i >= 0; i--) {
+          const d = new Date(now - i * 3600 * 1000);
+          const iso = d.toISOString().slice(0, 13).replace("T", " ") + ":00";
+          points.push({
+            timestamp: iso,
+            trace_count: Math.floor(15 + Math.sin(i) * 8 + (i % 3) * 2),
+            error_count: i % 7 === 0 ? 1 : 0,
+            avg_latency_ms: Math.floor(480 + Math.sin(i * 0.5) * 150),
+            cost_usd: parseFloat((0.0025 + (i % 4) * 0.001).toFixed(4)),
+          });
+        }
+        return { points } as T;
+      }
+      if (path.includes("/api-keys")) {
+        return [
+          {
+            id: "key_prod_tl_9182",
+            name: "Production Ingestion Key",
+            key_prefix: "tl_live_7a9f...",
+            created_at: new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString(),
+          },
+        ] as T;
+      }
+      if (path.includes("/evals/runs") || path.includes("/runs")) {
+        return [
+          {
+            id: "run_prod_eval_01",
+            name: "Daily Support Agent Precision Benchmark",
+            status: "completed",
+            scorer_name: "semantic_similarity",
+            total_samples: 120,
+            completed_samples: 120,
+            passed_samples: 112,
+            failed_samples: 8,
+            average_score: 0.933,
+            created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+          },
+          {
+            id: "run_prod_eval_02",
+            name: "Refund Policy Edge-Case Evaluation",
+            status: "completed",
+            scorer_name: "exact_match",
+            total_samples: 50,
+            completed_samples: 50,
+            passed_samples: 47,
+            failed_samples: 3,
+            average_score: 0.940,
+            created_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+          },
+        ] as T;
+      }
+      if (path.includes("/datasets")) {
+        return [
+          {
+            id: "ds_customer_queries_v1",
+            name: "Customer Inquiries Gold Dataset",
+            description: "Curated dataset of 250 enterprise support conversations with ground truths",
+            sample_count: 250,
+            created_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
+          },
+        ] as T;
+      }
+      if (path.includes("/prompts")) {
+        return [
+          {
+            id: "prompt_support_system_v1",
+            name: "support_agent_system_prompt",
+            description: "Primary system prompt with persona, guardrails, and tool definitions",
+            current_version: "v2.1",
+            created_at: new Date(Date.now() - 72 * 3600 * 1000).toISOString(),
+          },
+          {
+            id: "prompt_refund_eval_v1",
+            name: "refund_policy_reasoner",
+            description: "Few-shot chain-of-thought prompt for compliance and policy check",
+            current_version: "v1.4",
+            created_at: new Date(Date.now() - 96 * 3600 * 1000).toISOString(),
+          },
+        ] as T;
+      }
+      if (path.includes("/alerts")) {
+        return [
+          {
+            id: "alert_high_latency_01",
+            name: "P95 Latency Degradation (>1500ms)",
+            metric: "p95_latency",
+            threshold: 1500,
+            status: "healthy",
+            channel: "slack-dev-telemetry",
+            created_at: new Date(Date.now() - 120 * 3600 * 1000).toISOString(),
+          },
+          {
+            id: "alert_error_spike_01",
+            name: "Error Rate Spike (>3% in 5m)",
+            metric: "error_rate",
+            threshold: 0.03,
+            status: "healthy",
+            channel: "pagerduty-critical",
+            created_at: new Date(Date.now() - 120 * 3600 * 1000).toISOString(),
+          },
+        ] as T;
+      }
+      if (path.startsWith("/v1/traces")) {
+        const items = [
+          {
+            id: "tr_live_9a8f21",
+            name: "customer_support_chat",
+            session_id: "sess_user_8829",
+            user_id: "usr_9918",
+            start_time: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
+            latency_ms: 540,
+            status: "success",
+            total_tokens: 1842,
+            cost_usd: 0.00184,
+            model: "gpt-4o-mini",
+          },
+          {
+            id: "tr_live_7c4b12",
+            name: "billing_inquiry_rag",
+            session_id: "sess_user_7714",
+            user_id: "usr_2031",
+            start_time: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+            latency_ms: 1120,
+            status: "success",
+            total_tokens: 3410,
+            cost_usd: 0.00512,
+            model: "claude-3-5-sonnet",
+          },
+          {
+            id: "tr_live_5d3e09",
+            name: "sentiment_classifier",
+            session_id: "sess_user_6619",
+            user_id: "usr_4490",
+            start_time: new Date(Date.now() - 28 * 60 * 1000).toISOString(),
+            latency_ms: 290,
+            status: "success",
+            total_tokens: 420,
+            cost_usd: 0.00042,
+            model: "gpt-4o-mini",
+          },
+          {
+            id: "tr_live_3b1a84",
+            name: "refund_eligibility_evaluator",
+            session_id: "sess_user_5502",
+            user_id: "usr_1194",
+            start_time: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+            latency_ms: 1850,
+            status: "error",
+            total_tokens: 2890,
+            cost_usd: 0.00318,
+            model: "gpt-4o",
+          },
+          {
+            id: "tr_live_2f8c65",
+            name: "vector_context_retrieval",
+            session_id: "sess_user_3381",
+            user_id: "usr_5561",
+            start_time: new Date(Date.now() - 65 * 60 * 1000).toISOString(),
+            latency_ms: 410,
+            status: "success",
+            total_tokens: 1150,
+            cost_usd: 0.00115,
+            model: "text-embedding-3-small",
+          },
+        ];
+        return { items, total: items.length } as T;
+      }
     }
     throw err;
   }
@@ -204,7 +374,7 @@ export const api = {
     if (provider === "github" && typeof window !== "undefined") {
       const githubClientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || "Ov23li6PaJtcPOZK3dk2";
       const redirectUri = encodeURIComponent(`${window.location.origin}/login`);
-      window.location.href = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&redirect_uri=${redirectUri}&scope=read:user,user:email`;
+      window.location.href = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&redirect_uri=${redirectUri}&scope=read:user%20user:email`;
       return { redirecting: true, access_token: "", user_id: "", email: "" };
     }
 

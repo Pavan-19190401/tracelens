@@ -221,6 +221,8 @@ export default function LoginPage() {
     } catch (err: any) {
       if (err.code === "auth/operation-not-allowed" || (err.message && err.message.includes("operation-not-allowed"))) {
         setError(`The ${provider === "github" ? "GitHub" : "Google"} provider requires a registered Client ID & Secret in Firebase.`);
+      } else if (err.code === "auth/unauthorized-domain" || (err.message && err.message.includes("unauthorized-domain"))) {
+        setError("This Vercel domain must be added to Firebase Console under Authentication > Settings > Authorized Domains.");
       } else if (err.code === "auth/popup-closed-by-user") {
         setError("The sign-in popup was closed before completing authentication.");
       } else {
